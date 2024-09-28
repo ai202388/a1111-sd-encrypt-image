@@ -17,7 +17,7 @@ import sys
 from urllib.parse import unquote
 
 repo_dir = md_scripts.basedir()
-password = getattr(shared.cmd_opts, 'encrypt_pass', None)
+password = getattr(shared.cmd_opts, 'enc_pw', None)
 api_enable = getattr(shared.cmd_opts, 'api', False)
 
 def hook_http_request(app: FastAPI):
@@ -87,10 +87,9 @@ def set_shared_options():
 
 def app_started_callback(_: Blocks, app: FastAPI):
     set_shared_options()
-    if password:
-        app.middleware_stack = None  # reset current middleware to allow modifying user provided list
-        hook_http_request(app)
-        app.build_middleware_stack()  # rebuild middleware stack on-the-fly
+    app.middleware_stack = None  # reset current middleware to allow modifying user provided list
+    hook_http_request(app)
+    app.build_middleware_stack()  # rebuild middleware stack on-the-fly
     
 
 if PILImage.Image.__name__ != 'EncryptedImage':
@@ -152,12 +151,11 @@ if PILImage.Image.__name__ != 'EncryptedImage':
             pnginfo = params.get('pnginfo', PngImagePlugin.PngInfo())
             if not pnginfo:
                 pnginfo = PngImagePlugin.PngInfo()
-                for key in (self.info or {}).keys():
-                    if self.info[key]:
-                        print(f'{key}:{str(self.info[key])}')
-                        pnginfo.add_text(key,str(self.info[key]))
             pnginfo.add_text('Encrypt', 'pixel_shuffle_3')
             pnginfo.add_text('EncryptPwdSha', get_sha256(f'{get_sha256(password)}Encrypt'))
+            for key in (self.info or {}).keys():
+                if self.info[key]:
+                    pnginfo.add_text(key,str(self.info[key]))
             params.update(pnginfo=pnginfo)
             super().save(fp, format=self.format, **params)
             self.paste(back_img)
